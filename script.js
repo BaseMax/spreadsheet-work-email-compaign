@@ -672,12 +672,17 @@ function renderAll() {
 
 function addRow(sample = {}) {
     state.rows.push(normalizeRow({ ...sample }));
+    activeFilter = "all"; // always show all rows so the new row is visible
     saveState();
     renderAll();
+    setTimeout(() => {
+        const rows = grid.querySelectorAll("tbody tr");
+        if (rows.length) rows[rows.length - 1].scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }, 80);
+    toastMsg("New empty row added — fill in the details.");
 }
 
-function fillDemoRows() {
-    state.rows = [
+const DEMO_ROWS = [
     {
         company_name: "Acme Studio",
         email: "hello@acme.example",
@@ -699,13 +704,21 @@ function fillDemoRows() {
         category: "Enterprise",
         company_size: "201-1000",
         proposed_idea: "Operational workflow improvements and reporting automation",
-        status: 1,
+        status: 0,
         comments: "General inbox"
     }
-    ];
-    saveState();
-    renderAll();
-    toastMsg("Sample rows loaded");
+];
+
+function fillDemoRows() {
+    if (state.rows.length === 0) {
+        DEMO_ROWS.forEach(r => state.rows.push(normalizeRow({ ...r })));
+        activeFilter = "all";
+        saveState();
+        renderAll();
+        toastMsg(`${DEMO_ROWS.length} sample rows added.`);
+    } else {
+        addRow();
+    }
 }
 
 function editLookupList(key) {
@@ -1108,7 +1121,6 @@ el("settingsBtn").addEventListener("click", openSettings);
 el("exportJsonBtn").addEventListener("click", exportJson);
 el("exportXlsxBtn").addEventListener("click", exportXlsx);
 el("resetBtn").addEventListener("click", resetAll);
-el("addLookupRowBtn").addEventListener("click", () => editLookupList(activeListKey));
 el("importFile").addEventListener("change", async (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
