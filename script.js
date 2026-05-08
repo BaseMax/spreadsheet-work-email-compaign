@@ -1,6 +1,31 @@
 const STORAGE_KEY = "outreach_crm_lite_v1";
 const APP_VERSION = 1;
 
+const STATUS_TIMESTAMP_KEY = {
+    1: "sent_at_initial",
+    2: "sent_at_followup1",
+    3: "sent_at_followup2",
+    4: "sent_at_followup3"
+};
+
+const STATUS_SEND_LABEL = {
+    1: "Date/time initial email was sent",
+    2: "Date/time first follow-up was sent",
+    3: "Date/time second follow-up was sent",
+    4: "Date/time final follow-up was sent"
+};
+
+const SEQUENCE_STATUSES = [1, 2, 3, 4];
+
+const REMINDER_SETTING_KEY = {
+    1: "days_after_initial",
+    2: "days_after_followup1",
+    3: "days_after_followup2",
+    4: "days_after_followup3"
+};
+
+let activeFilter = "all"; // "all" | "needs_action" | "overdue"
+
 const STATUS_OPTIONS = [
     { value: 0, label: "Waiting for initial email" },
     { value: 1, label: "Initial email sent" },
@@ -18,6 +43,10 @@ const DEFAULT_STATE = {
     company_name: "BSafe Group",
     default_contact_label: "there",
     enable_xlsx: true,
+    days_after_initial: 5,
+    days_after_followup1: 7,
+    days_after_followup2: 7,
+    days_after_followup3: 10,
     },
     lookupLists: {
     industry: ["Software", "Manufacturing", "Healthcare", "Education", "Finance"],
@@ -149,7 +178,11 @@ function normalizeRow(row) {
     company_size: row.company_size ?? "",
     proposed_idea: row.proposed_idea ?? "",
     status: Number.isFinite(Number(row.status)) ? Number(row.status) : 0,
-    comments: row.comments ?? ""
+    comments: row.comments ?? "",
+    sent_at_initial: row.sent_at_initial ?? null,
+    sent_at_followup1: row.sent_at_followup1 ?? null,
+    sent_at_followup2: row.sent_at_followup2 ?? null,
+    sent_at_followup3: row.sent_at_followup3 ?? null,
     };
 }
 
@@ -265,19 +298,84 @@ function renderTemplateOverview() {
     el("templateOverview").querySelectorAll("[data-preview-template]").forEach(btn => btn.addEventListener("click", () => previewTemplate(btn.dataset.previewTemplate)));
 }
 
+function daysSince(isoString) {
+    if (!isoString) return null;
+    const ms = Date.now() - new Date(isoString).getTime();
+    return Math.floor(ms / 86400000);
+}
+
+/**
+ * For a row, determine its reminder urgency:
+ * "overdue"  — more days have passed than the configured threshold
+ * "due_soon" — within 1 day of the threshold
+ * "ok"       — sent but not yet due
+ * "none"     — no timestamp relevant (status 0, 5, 6)
+ */
+function rowUrgency(row) {
+    const s = Number(row.status);
+    if (!SEQUENCE_STATUSES.includes(s)) return "none";
+    const tsKey = STATUS_TIMESTAMP_KEY[s];
+    const days = daysSince(row[tsKey]);
+    if (days === null) return "no_timestamp";
+    const settingKey = REMINDER_SETTING_KEY[s];
+    const threshold = Number(state.settings[settingKey] ?? 7);
+    if (days > threshold) return "overdue";
+    if (days >= threshold - 1) return "due_soon";
+    return "ok";
+}
+
+/** Returns true if the row needs attention (due_soon or overdue or missing timestamp on a sent status). */
+function rowNeedsAction(row) {
+    const u = rowUrgency(row);
+    return u === "overdue" || u === "due_soon" || u === "no_timestamp";
+}
+
+function getLocalDatetimeString() {
+    const now = new Date();
+    const pad = n => String(n).padStart(2, "0");
+    return `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`;
+}
+
 function renderStats() {
     const rows = state.rows.length;
     const waiting = state.rows.filter(r => Number(r.status) === 0).length;
-    const sent = state.rows.filter(r => Number(r.status) >= 1 && Number(r.status) <= 4).length;
+    const sent = state.rows.filter(r => SEQUENCE_STATUSES.includes(Number(r.status))).length;
     const replied = state.rows.filter(r => Number(r.status) === 5).length;
     const closed = state.rows.filter(r => Number(r.status) === 6).length;
+    const overdue = state.rows.filter(r => rowUrgency(r) === "overdue").length;
+    const dueSoon = state.rows.filter(r => rowUrgency(r) === "due_soon").length;
     el("statsBar").innerHTML = `
     <span class="pill">Rows <b class="badge">${rows}</b></span>
     <span class="pill">Waiting <b class="badge">${waiting}</b></span>
     <span class="pill">In sequence <b class="badge">${sent}</b></span>
     <span class="pill">Replied <b class="badge">${replied}</b></span>
     <span class="pill">Closed <b class="badge">${closed}</b></span>
+    ${overdue ? `<span class="pill pill-overdue">Overdue <b class="badge">${overdue}</b></span>` : ""}
+    ${dueSoon ? `<span class="pill pill-due-soon">Due soon <b class="badge">${dueSoon}</b></span>` : ""}
     `;
+}
+
+function renderFilterBar() {
+    const bar = el("filterBar");
+    if (!bar) return;
+    const overdue = state.rows.filter(r => rowUrgency(r) === "overdue").length;
+    const needs = state.rows.filter(rowNeedsAction).length;
+    bar.innerHTML = `
+    <button class="filter-btn ${activeFilter === "all" ? "active" : ""}" data-filter="all">All rows</button>
+    <button class="filter-btn ${activeFilter === "needs_action" ? "active" : ""}" data-filter="needs_action">
+        Needs action ${needs ? `<span class="badge">${needs}</span>` : ""}
+    </button>
+    <button class="filter-btn ${activeFilter === "overdue" ? "active" : ""}" data-filter="overdue">
+        Overdue ${overdue ? `<span class="badge badge-red">${overdue}</span>` : ""}
+    </button>
+    `;
+    bar.querySelectorAll(".filter-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+        activeFilter = btn.dataset.filter;
+        renderFilterBar();
+        renderGrid();
+    });
+    });
 }
 
 function renderGrid() {
@@ -291,20 +389,34 @@ function renderGrid() {
     { key: "company_size", label: "Company Size", type: "select", optionsKey: "company_size", hint: "Managed lookup list." },
     { key: "proposed_idea", label: "Proposed Idea", type: "textarea", hint: "Short and structured." },
     { key: "status", label: "Status", type: "select", optionsKey: "status", hint: "Pipeline stage." },
+    { key: "_timeline", label: "Timeline", type: "timeline", hint: "Send dates & days elapsed." },
     { key: "comments", label: "Comments", type: "textarea", hint: "Notes, objections, follow-ups." },
     { key: "actions", label: "Actions", type: "actions", hint: "Row operations." }
     ];
 
     const colgroup = columns.map((c, i) => {
-    const widths = [160, 220, 150, 140, 150, 150, 140, 250, 190, 240, 120];
+    const widths = [160, 220, 150, 140, 150, 150, 140, 250, 190, 200, 240, 120];
     return `<col style="width:${widths[i]}px">`;
     }).join("");
 
     const thead = columns.map(c => `<th>${c.label}<span class="hint">${c.hint}</span></th>`).join("");
-    const tbody = state.rows.map((row, rowIndex) => {
+
+    let visibleRows = state.rows.map((row, idx) => ({ row, idx }));
+    if (activeFilter === "needs_action") {
+        visibleRows = visibleRows.filter(({ row }) => rowNeedsAction(row));
+    } else if (activeFilter === "overdue") {
+        visibleRows = visibleRows.filter(({ row }) => rowUrgency(row) === "overdue");
+    }
+
+    const tbody = visibleRows.map(({ row, idx: rowIndex }) => {
+    const urgency = rowUrgency(row);
+    const rowClass = urgency === "overdue" ? "row-overdue" : urgency === "due_soon" ? "row-due-soon" : urgency === "no_timestamp" ? "row-no-timestamp" : "";
     const cells = columns.map(c => {
         if (c.key === "actions") {
         return `<td><div class="actions"><button class="small" data-fill-template="${rowIndex}">Templates</button><button class="small danger" data-del-row="${rowIndex}">Delete</button></div></td>`;
+        }
+        if (c.key === "_timeline") {
+        return `<td>${buildTimelineCell(row, rowIndex)}</td>`;
         }
         if (c.type === "text") {
         return `<td><input value="${escapeHtml(row[c.key] ?? "")}" data-row="${rowIndex}" data-key="${c.key}" /></td>`;
@@ -318,7 +430,7 @@ function renderGrid() {
         }
         return `<td></td>`;
     }).join("");
-    return `<tr>${cells}</tr>`;
+    return `<tr class="${rowClass}" data-rowindex="${rowIndex}">${cells}</tr>`;
     }).join("");
 
     grid.innerHTML = `<colgroup>${colgroup}</colgroup><thead><tr>${thead}</tr></thead><tbody>${tbody}</tbody>`;
@@ -326,15 +438,19 @@ function renderGrid() {
     grid.querySelectorAll("[data-row]").forEach(node => {
     const rowIndex = Number(node.dataset.row);
     const key = node.dataset.key;
-    const handler = () => {
+    if (key === "status") {
+        node.addEventListener("change", () => handleStatusChange(rowIndex, Number(node.value), node));
+    } else {
+        const handler = () => {
         state.rows[rowIndex][key] = node.value;
-        if (key === "status") state.rows[rowIndex][key] = Number(node.value);
         saveState();
         renderStats();
+        renderFilterBar();
         renderTemplateOverview();
-    };
-    node.addEventListener("input", handler);
-    node.addEventListener("change", handler);
+        };
+        node.addEventListener("input", handler);
+        node.addEventListener("change", handler);
+    }
     });
     grid.querySelectorAll("[data-del-row]").forEach(btn => {
     btn.addEventListener("click", () => {
@@ -348,6 +464,185 @@ function renderGrid() {
     grid.querySelectorAll("[data-fill-template]").forEach(btn => {
     btn.addEventListener("click", () => openTemplatePicker(Number(btn.dataset.fillTemplate)));
     });
+    grid.querySelectorAll("[data-edit-timestamp]").forEach(btn => {
+    btn.addEventListener("click", () => {
+        const rowIndex = Number(btn.dataset.editTimestamp);
+        const tsKey = btn.dataset.tsKey;
+        openTimestampModal(rowIndex, tsKey);
+    });
+    });
+}
+
+function buildTimelineCell(row, rowIndex) {
+    const s = Number(row.status);
+    const entries = [
+    { tsKey: "sent_at_initial", label: "Initial", statusValue: 1 },
+    { tsKey: "sent_at_followup1", label: "FU #1", statusValue: 2 },
+    { tsKey: "sent_at_followup2", label: "FU #2", statusValue: 3 },
+    { tsKey: "sent_at_followup3", label: "FU #3", statusValue: 4 },
+    ];
+    const lines = entries.map(e => {
+    const isCurrentStatus = s === e.statusValue;
+    const isAccessible = s >= e.statusValue;
+    const ts = row[e.tsKey];
+    const days = daysSince(ts);
+    if (ts) {
+        const daysStr = days === 0 ? "today" : `${days}d ago`;
+        const settingKey = REMINDER_SETTING_KEY[e.statusValue];
+        const threshold = Number(state.settings[settingKey] ?? 7);
+        const isOverdue = days > threshold;
+        const isDueSoon = days >= threshold - 1 && !isOverdue;
+        const cls = isCurrentStatus ? (isOverdue ? "ts-overdue" : isDueSoon ? "ts-due-soon" : "ts-ok") : "ts-past";
+        const editBtn = `<button class="tiny-btn" data-edit-timestamp="${rowIndex}" data-ts-key="${e.tsKey}" title="Edit date">✎</button>`;
+        return `<div class="ts-row ${cls}">${e.label}: <span>${formatDateShort(ts)}</span> <span class="ts-days">(${daysStr})</span>${editBtn}</div>`;
+    } else if (isAccessible) {
+        return `<div class="ts-row ts-missing"><button class="tiny-btn ts-set-btn" data-edit-timestamp="${rowIndex}" data-ts-key="${e.tsKey}" title="Set send date">Set ${e.label} date</button></div>`;
+    }
+    return "";
+    }).filter(Boolean).join("");
+    return `<div class="timeline-cell">${lines || '<span class="muted" style="font-size:11px;">—</span>'}</div>`;
+}
+
+function formatDateShort(iso) {
+    if (!iso) return "—";
+    try {
+    const d = new Date(iso);
+    const pad = n => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    } catch { return iso; }
+}
+
+/**
+ * Called when the user changes the status dropdown.
+ * For statuses 1-4, we intercept and ask for the send date/time.
+ * For other statuses, we validate prerequisites.
+ */
+function handleStatusChange(rowIndex, newStatus, selectNode) {
+    const row = state.rows[rowIndex];
+    const oldStatus = row.status;
+
+    if (newStatus === 2 && !row.sent_at_initial) {
+        toastMsg("⚠ Cannot set Follow-up #1: please set the Initial email date first.");
+        selectNode.value = oldStatus;
+        return;
+    }
+    if (newStatus === 3 && !row.sent_at_followup1) {
+        toastMsg("⚠ Cannot set Follow-up #2: please set Follow-up #1 date first.");
+        selectNode.value = oldStatus;
+        return;
+    }
+    if (newStatus === 4 && !row.sent_at_followup2) {
+        toastMsg("⚠ Cannot set Follow-up #3: please set Follow-up #2 date first.");
+        selectNode.value = oldStatus;
+        return;
+    }
+
+    if (SEQUENCE_STATUSES.includes(newStatus)) {
+        const tsKey = STATUS_TIMESTAMP_KEY[newStatus];
+        const label = STATUS_SEND_LABEL[newStatus];
+        openStatusDateModal(rowIndex, newStatus, tsKey, label, selectNode, oldStatus);
+    } else {
+        row.status = newStatus;
+        saveState();
+        renderAll();
+    }
+}
+
+function openStatusDateModal(rowIndex, newStatus, tsKey, label, selectNode, oldStatus) {
+    const row = state.rows[rowIndex];
+    const existingVal = row[tsKey] ? row[tsKey].slice(0, 16) : getLocalDatetimeString();
+    openModal(`
+    <header>
+        <div class="topbar">
+        <div>
+            <h1 style="margin:0;font-size:18px;">Set send date</h1>
+            <p style="margin:4px 0 0;color:var(--muted);font-size:12px;">${escapeHtml(label)} for <strong>${escapeHtml(row.company_name || "this row")}</strong></p>
+        </div>
+        </div>
+    </header>
+    <div class="modal-grid" style="margin-top:16px;">
+        <div class="full template-editor">
+        <label class="tiny muted">${escapeHtml(label)}</label>
+        <input type="datetime-local" id="statusDateInput" value="${escapeHtml(existingVal)}" style="font-size:15px;padding:12px;" />
+        </div>
+        <div class="full footer-note">
+        This timestamp is used to calculate how many days have passed and when the next action is due.
+        </div>
+    </div>
+    <div class="modal-actions">
+        <button id="cancelStatusDate">Cancel (keep old status)</button>
+        <button class="primary" id="confirmStatusDate">Confirm</button>
+    </div>`);
+        document.getElementById("cancelStatusDate").onclick = () => {
+        selectNode.value = oldStatus;
+        closeModal();
+    };
+    document.getElementById("confirmStatusDate").onclick = () => {
+    const val = document.getElementById("statusDateInput").value;
+    if (!val) { toastMsg("Please select a date/time."); return; }
+    row.status = newStatus;
+    row[tsKey] = new Date(val).toISOString();
+    saveState();
+    renderAll();
+    closeModal();
+    toastMsg("Status updated with send date.");
+    };
+    window.__closeModal = () => {
+    selectNode.value = oldStatus;
+    closeModal();
+    };
+}
+
+function openTimestampModal(rowIndex, tsKey) {
+    const row = state.rows[rowIndex];
+    const labelMap = {
+    sent_at_initial: "Initial email sent date",
+    sent_at_followup1: "Follow-up #1 sent date",
+    sent_at_followup2: "Follow-up #2 sent date",
+    sent_at_followup3: "Follow-up #3 sent date",
+    };
+    const label = labelMap[tsKey] || tsKey;
+    const existingVal = row[tsKey] ? row[tsKey].slice(0, 16) : getLocalDatetimeString();
+    openModal(`
+    <header>
+        <div class="topbar">
+        <div>
+            <h1 style="margin:0;font-size:18px;">Edit send date</h1>
+            <p style="margin:4px 0 0;color:var(--muted);font-size:12px;">${escapeHtml(label)} — <strong>${escapeHtml(row.company_name || "this row")}</strong></p>
+        </div>
+        <button onclick="window.__closeModal()">Close</button>
+        </div>
+    </header>
+    <div class="modal-grid" style="margin-top:16px;">
+        <div class="full template-editor">
+        <label class="tiny muted">${escapeHtml(label)}</label>
+        <input type="datetime-local" id="tsEditInput" value="${escapeHtml(existingVal)}" style="font-size:15px;padding:12px;" />
+        </div>
+    </div>
+    <div class="modal-actions">
+        ${row[tsKey] ? `<button class="danger" id="clearTs">Clear date</button>` : ""}
+        <button class="success" id="saveTs">Save</button>
+    </div>`);
+    document.getElementById("saveTs").onclick = () => {
+    const val = document.getElementById("tsEditInput").value;
+    if (!val) { toastMsg("Please select a date/time."); return; }
+    row[tsKey] = new Date(val).toISOString();
+    saveState();
+    renderAll();
+    closeModal();
+    toastMsg("Date saved.");
+    };
+    const clearBtn = document.getElementById("clearTs");
+    if (clearBtn) {
+    clearBtn.onclick = () => {
+        row[tsKey] = null;
+        saveState();
+        renderAll();
+        closeModal();
+        toastMsg("Date cleared.");
+    };
+    }
+    window.__closeModal = closeModal;
 }
 
 function buildOptions(key, currentValue) {
@@ -370,6 +665,7 @@ function renderAll() {
     renderLookupOverview();
     renderTemplateOverview();
     renderStats();
+    renderFilterBar();
     renderGrid();
     saveState();
 }
@@ -623,6 +919,10 @@ async function exportXlsx() {
     "Company Size": r.company_size,
     "Proposed Idea": r.proposed_idea,
     "Status": statusLabel(r.status),
+    "Sent At Initial": r.sent_at_initial ? formatDateShort(r.sent_at_initial) : "",
+    "Sent At Followup1": r.sent_at_followup1 ? formatDateShort(r.sent_at_followup1) : "",
+    "Sent At Followup2": r.sent_at_followup2 ? formatDateShort(r.sent_at_followup2) : "",
+    "Sent At Followup3": r.sent_at_followup3 ? formatDateShort(r.sent_at_followup3) : "",
     "Comments": r.comments,
     }));
     const main = sheetjs.utils.json_to_sheet(rows);
@@ -676,7 +976,11 @@ async function importFile(file) {
         company_size: r["Company Size"] ?? r["company_size"] ?? "",
         proposed_idea: r["Proposed Idea"] ?? r["proposed_idea"] ?? "",
         status: parseStatus(r["Status"] ?? r["status"]),
-        comments: r["Comments"] ?? r["comments"] ?? ""
+        comments: r["Comments"] ?? r["comments"] ?? "",
+        sent_at_initial: r["Sent At Initial"] ?? r["sent_at_initial"] ?? null,
+        sent_at_followup1: r["Sent At Followup1"] ?? r["sent_at_followup1"] ?? null,
+        sent_at_followup2: r["Sent At Followup2"] ?? r["sent_at_followup2"] ?? null,
+        sent_at_followup3: r["Sent At Followup3"] ?? r["sent_at_followup3"] ?? null,
     }));
     saveState();
     renderAll();
@@ -720,6 +1024,30 @@ function openSettings() {
         <input id="setDefaultContact" value="${escapeHtml(state.settings.default_contact_label)}" />
         </div>
     </div>
+    <div style="margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,255,255,.08);">
+        <div style="font-size:13px;font-weight:600;margin-bottom:10px;">Reminder thresholds <span class="muted" style="font-weight:400;">(days after sending before follow-up is due)</span></div>
+        <div class="modal-grid">
+        <div class="template-editor">
+            <label class="tiny muted">Days after Initial email → Follow-up #1 due</label>
+            <input type="number" min="1" id="setDaysInitial" value="${Number(state.settings.days_after_initial)}" />
+        </div>
+        <div class="template-editor">
+            <label class="tiny muted">Days after Follow-up #1 → Follow-up #2 due</label>
+            <input type="number" min="1" id="setDaysFU1" value="${Number(state.settings.days_after_followup1)}" />
+        </div>
+        <div class="template-editor">
+            <label class="tiny muted">Days after Follow-up #2 → Follow-up #3 due</label>
+            <input type="number" min="1" id="setDaysFU2" value="${Number(state.settings.days_after_followup2)}" />
+        </div>
+        <div class="template-editor">
+            <label class="tiny muted">Days after Follow-up #3 → consider closed</label>
+            <input type="number" min="1" id="setDaysFU3" value="${Number(state.settings.days_after_followup3)}" />
+        </div>
+        </div>
+        <div class="footer-note" style="margin-top:10px;">
+        <b>How it works:</b> When a row has status "Initial email sent" and the sent date is more than the configured days ago, the row is highlighted as <span style="color:#f87171;">overdue</span> and shown in the Overdue filter. <span style="color:#fbbf24;">Due soon</span> means it's within 1 day of the threshold.
+        </div>
+    </div>
     <div class="modal-actions">
         <button class="success" id="saveSettings">Save settings</button>
     </div>`);
@@ -727,6 +1055,10 @@ function openSettings() {
     state.settings.your_name = document.getElementById("setYourName").value.trim();
     state.settings.company_name = document.getElementById("setCompanyName").value.trim();
     state.settings.default_contact_label = document.getElementById("setDefaultContact").value.trim() || "there";
+    state.settings.days_after_initial = Math.max(1, Number(document.getElementById("setDaysInitial").value) || 5);
+    state.settings.days_after_followup1 = Math.max(1, Number(document.getElementById("setDaysFU1").value) || 7);
+    state.settings.days_after_followup2 = Math.max(1, Number(document.getElementById("setDaysFU2").value) || 7);
+    state.settings.days_after_followup3 = Math.max(1, Number(document.getElementById("setDaysFU3").value) || 10);
     saveState();
     renderAll();
     closeModal();
