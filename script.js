@@ -790,8 +790,6 @@ el("importFile").addEventListener("change", async (e) => {
     }
 });
 
-// Try to detect a bundled XLSX library if present locally.
-// For true offline XLSX support, place SheetJS in a local script tag before this file or bundle it with the page.
 if (window.XLSX) {
     state.settings.enable_xlsx = true;
 } else {
