@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Outreach CRM Lite</title>
+  <link rel="stylesheet" type="text/css" href="style.css">
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="topbar">
+        <div class="title">
+          <h1>Outreach CRM Lite</h1>
+          <p>Client-only, offline-first, template-driven list manager with lookup tables and local storage.</p>
+        </div>
+        <div class="toolbar">
+          <button class="primary" id="addRowBtn">+ Add row</button>
+          <button id="manageLookupsBtn">Manage lookup values</button>
+          <button id="manageTemplatesBtn">Manage templates</button>
+          <button id="settingsBtn">Settings</button>
+          <button class="success" id="exportJsonBtn">Export JSON</button>
+          <button class="success" id="exportXlsxBtn">Export XLSX</button>
+          <label class="file-label">Import file <input type="file" id="importFile" accept=".json,.xlsx,.xls" /></label>
+          <button class="danger" id="resetBtn">Reset demo data</button>
+        </div>
+      </div>
+    </header>
+
+    <main>
+      <aside>
+        <div class="section">
+          <h2>Template variables</h2>
+          <p>Use placeholders inside templates. The preview below shows the supported fields and default values.</p>
+          <div class="hint-list" id="variableHints"></div>
+          <div class="footer-note" id="templateHelp"></div>
+        </div>
+
+        <div class="section">
+          <h2>Managed lookup lists</h2>
+          <p>These lists feed dropdowns for the main grid. Add, rename, delete, and reuse them freely.</p>
+          <div class="list-box" id="lookupOverview"></div>
+        </div>
+
+        <div class="section">
+          <h2>Templates</h2>
+          <div class="templates" id="templateOverview"></div>
+        </div>
+      </aside>
+
+      <section class="right">
+        <div class="stats" id="statsBar"></div>
+        <div class="grid-wrap">
+          <table class="grid" id="dataGrid"></table>
+        </div>
+        <div class="right-footer">
+          <div class="muted" id="syncStatus">Local cache: ready</div>
+          <div class="toolbar">
+            <button class="small" id="fillDemoBtn">Load sample rows</button>
+            <button class="small" id="addLookupRowBtn">+ Lookup item</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal" id="modalBody"></div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script src="xlsx.full.min.js"></script>
+  <script src="script.js" type="text/javascript"></script>
+</body>
+</html>
