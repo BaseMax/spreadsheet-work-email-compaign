@@ -108,6 +108,6 @@ Any modern browser with `localStorage` and `Clipboard API` support (Chrome, Fire
 
 ## License
 
-MIT License - Copyright © 2026 Seyyed Ali Mohammadiyeh (Max Base).
+Copyright © 2026 Seyyed Ali Mohammadiyeh (Max Base)
 
 See [LICENSE](LICENSE) for the full text.
