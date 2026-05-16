@@ -1,24 +1,24 @@
 # Outreach CRM Lite
 
-A client-only, offline-first, template-driven outreach list manager built with pure HTML, CSS, and JavaScript. No server, no backend, no dependencies to install — just open `index.html` in a browser and start tracking your email campaigns.
+A client-only, offline-first, template-driven outreach list manager built with pure HTML, CSS, and JavaScript. No server, no backend, no dependencies to install, just open `index.html` in a browser and start tracking your email campaigns.
 
 [![MIT License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
 ## Features
 
-- **Offline-first** — all data is stored in browser `localStorage`, nothing leaves your machine.
-- **Email sequence tracking** — manage up to four stages per contact: initial email, and three follow-ups.
-- **Template engine** — write reusable email templates with `{{variable}}` placeholders and `{{field | default: "fallback"}}` syntax.
-- **Lookup lists** — dropdown values for Industry, Category, Company Size, and Status are fully editable.
-- **Smart filters** — quickly view all contacts, contacts needing action, or overdue contacts.
-- **Statistics bar** — at-a-glance counts per status.
-- **Export / Import** — export your data as JSON or XLSX; import back from JSON, XLSX, or XLS.
-- **Demo data** — one-click sample rows and a reset button for a clean slate.
-- **Dark UI** — polished dark theme, no external CSS framework required.
+- **Offline-first** - all data is stored in browser `localStorage`, nothing leaves your machine.
+- **Email sequence tracking** - manage up to four stages per contact: initial email, and three follow-ups.
+- **Template engine** - write reusable email templates with `{{variable}}` placeholders and `{{field | default: "fallback"}}` syntax.
+- **Lookup lists** - dropdown values for Industry, Category, Company Size, and Status are fully editable.
+- **Smart filters** - quickly view all contacts, contacts needing action, or overdue contacts.
+- **Statistics bar** - at-a-glance counts per status.
+- **Export / Import** - export your data as JSON or XLSX; import back from JSON, XLSX, or XLS.
+- **Demo data** - one-click sample rows and a reset button for a clean slate.
+- **Dark UI** - polished dark theme, no external CSS framework required.
 
 ## Screenshot
 
-> Open `index.html` in any modern browser — no build step needed.
+> Open `index.html` in any modern browser - no build step needed.
 
 ## Getting Started
 
@@ -56,9 +56,9 @@ That's it. No `npm install`, no bundler, no server.
 |---|---|
 | 0 | Waiting for initial email |
 | 1 | Initial email sent |
-| 2 | No reply — first follow-up |
-| 3 | No reply — second follow-up |
-| 4 | No reply — final follow-up |
+| 2 | No reply - first follow-up |
+| 3 | No reply - second follow-up |
+| 4 | No reply - final follow-up |
 | 5 | Replied / in progress |
 | 6 | Closed / do not contact |
 
@@ -89,9 +89,9 @@ Click **Settings** to configure:
 
 ### Export & Import
 
-- **Export JSON** — downloads a full snapshot of all rows, templates, and settings.
-- **Export XLSX** — downloads an Excel-compatible spreadsheet.
-- **Import file** — accepts `.json`, `.xlsx`, or `.xls`. Merges/replaces the current dataset.
+- **Export JSON** - downloads a full snapshot of all rows, templates, and settings.
+- **Export XLSX** - downloads an Excel-compatible spreadsheet.
+- **Import file** - accepts `.json`, `.xlsx`, or `.xls`. Merges/replaces the current dataset.
 
 ## File Structure
 
@@ -108,6 +108,6 @@ Any modern browser with `localStorage` and `Clipboard API` support (Chrome, Fire
 
 ## License
 
-MIT License — Copyright © 2026 Seyyed Ali Mohammadiyeh (Max Base).
+MIT License - Copyright © 2026 Seyyed Ali Mohammadiyeh (Max Base).
 
 See [LICENSE](LICENSE) for the full text.
