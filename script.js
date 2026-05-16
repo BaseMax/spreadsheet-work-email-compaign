@@ -324,7 +324,6 @@ function rowUrgency(row) {
     return "ok";
 }
 
-/** Returns true if the row needs attention (due_soon or overdue or missing timestamp on a sent status). */
 function rowNeedsAction(row) {
     const u = rowUrgency(row);
     return u === "overdue" || u === "due_soon" || u === "no_timestamp";
@@ -672,7 +671,7 @@ function renderAll() {
 
 function addRow(sample = {}) {
     state.rows.push(normalizeRow({ ...sample }));
-    activeFilter = "all"; // always show all rows so the new row is visible
+    activeFilter = "all";
     saveState();
     renderAll();
     setTimeout(() => {
