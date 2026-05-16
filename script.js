@@ -39,25 +39,25 @@ const STATUS_OPTIONS = [
 const DEFAULT_STATE = {
     version: APP_VERSION,
     settings: {
-    your_name: "Max Base",
-    company_name: "BSafe Group",
-    default_contact_label: "there",
-    enable_xlsx: true,
-    days_after_initial: 5,
-    days_after_followup1: 7,
-    days_after_followup2: 7,
-    days_after_followup3: 10,
+        your_name: "Max Base",
+        company_name: "BSafe Group",
+        default_contact_label: "there",
+        enable_xlsx: true,
+        days_after_initial: 5,
+        days_after_followup1: 7,
+        days_after_followup2: 7,
+        days_after_followup3: 10,
     },
     lookupLists: {
-    industry: ["Software", "Manufacturing", "Healthcare", "Education", "Finance"],
-    category: ["B2B", "B2C", "Enterprise", "Startup"],
-    company_size: ["1-10", "11-50", "51-200", "201-1000", "1000+"],
-    status: STATUS_OPTIONS.map(s => `${s.value} — ${s.label}`),
+        industry: ["Software", "Manufacturing", "Healthcare", "Education", "Finance"],
+        category: ["B2B", "B2C", "Enterprise", "Startup"],
+        company_size: ["1-10", "11-50", "51-200", "201-1000", "1000+"],
+        status: STATUS_OPTIONS.map(s => `${s.value} — ${s.label}`),
     },
     templates: {
-    initial: {
-        subject: "Potential collaboration with {{company_name}}",
-        body: `Hello {{contact_name | default: "there"}},
+        initial: {
+            subject: "Potential collaboration with {{company_name}}",
+            body: `Hello {{contact_name | default: "there"}},
 
 I hope you are doing well.
 
@@ -72,10 +72,10 @@ Would you be open to a short introductory call to explore this further?
 
 Best regards,
 {{your_name}}`
-    },
-    followup1: {
-        subject: "Follow-up on {{your_company_name}} × {{company_name}}",
-        body: `Hello {{contact_name | default: "there"}},
+        },
+        followup1: {
+            subject: "Follow-up on {{your_company_name}} × {{company_name}}",
+            body: `Hello {{contact_name | default: "there"}},
 
 I wanted to follow up on my previous message regarding {{your_company_name}}’s potential support for {{company_name}}.
 
@@ -85,10 +85,10 @@ Would a short introductory discussion be possible this week or next?
 
 Best regards,
 {{your_name}}`
-    },
-    followup2: {
-        subject: "Second follow-up – {{company_name}}",
-        body: `Hello {{contact_name | default: "there"}},
+        },
+        followup2: {
+            subject: "Second follow-up – {{company_name}}",
+            body: `Hello {{contact_name | default: "there"}},
 
 I’m reaching out again to briefly follow up.
 
@@ -100,10 +100,10 @@ Would you be available for a quick call?
 
 Best regards,
 {{your_name}}`
-    },
-    followup3: {
-        subject: "Final follow-up – {{company_name}}",
-        body: `Hello {{contact_name | default: "there"}},
+        },
+        followup3: {
+            subject: "Final follow-up – {{company_name}}",
+            body: `Hello {{contact_name | default: "there"}},
 
 This is my final follow-up regarding {{your_company_name}}’s potential collaboration with {{company_name}}.
 
@@ -113,21 +113,21 @@ Thank you for your time.
 
 Best regards,
 {{your_name}}`
-    }
+        }
     },
     rows: [
-    {
-        company_name: "Acme Studio",
-        email: "hello@acme.example",
-        contact_name: "Sara",
-        position: "Marketing Manager",
-        industry: "Software",
-        category: "B2B",
-        company_size: "11-50",
-        proposed_idea: "Website optimization, lead generation, and email automation",
-        status: 0,
-        comments: "Warm lead from conference"
-    }
+        {
+            company_name: "Acme Studio",
+            email: "hello@acme.example",
+            contact_name: "Sara",
+            position: "Marketing Manager",
+            industry: "Software",
+            category: "B2B",
+            company_size: "11-50",
+            proposed_idea: "Website optimization, lead generation, and email automation",
+            status: 0,
+            comments: "Warm lead from conference"
+        }
     ]
 };
 
